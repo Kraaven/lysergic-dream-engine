@@ -144,8 +144,8 @@ tts = TTS(
     gpu=False
 )
 
-# speaker = "p228"  # male
-speaker = "p226"  # male
+# speaker = "p227"  # female
+speaker = "p232"  # male
 
 sample_rate = tts.synthesizer.output_sample_rate
 
