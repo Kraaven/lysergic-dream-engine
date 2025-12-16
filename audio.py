@@ -7,6 +7,9 @@ import re
 import logging
 import string
 import os
+import sys
+from urllib.parse import unquote
+
 
 # -------------------------
 # Logging setup
@@ -46,28 +49,37 @@ def sanitize_filename(name: str) -> str:
     return "".join(c for c in name if c in valid_chars).replace(" ", "_")
 
 # -------------------------
-# Fetch random experience
+# Check for URL argument
 # -------------------------
-logger.info("Fetching random Erowid experience")
-
-url = "https://lysergic.kaizenklass.xyz/api/v1/erowid/random/experience?size_per_substance=1"
-substances = {
-    "urls": [
-        "https://www.erowid.org/chemicals/dmt/dmt.shtml",
-        "https://www.erowid.org/chemicals/lsd/lsd.shtml",
-        "https://www.erowid.org/plants/salvia/salvia.shtml",
-        "https://www.erowid.org/plants/cannabis/cannabis.shtml",
-    ]
-}
-
-experience = requests.post(url, json=substances).json()
+experience_url = None
+if len(sys.argv) > 1:
+    raw_url = sys.argv[1]
+    experience_url = unquote(raw_url)  # decode if URL-encoded
+    logger.info("Using provided experience URL: %s", experience_url)
 
 # -------------------------
-# Fetch full experience
+# Fetch random experience if no URL provided
+# -------------------------
+if not experience_url:
+    logger.info("Fetching random Erowid experience")
+    url = "https://lysergic.kaizenklass.xyz/api/v1/erowid/random/experience?size_per_substance=1"
+    substances = {
+        "urls": [
+            "https://www.erowid.org/chemicals/dmt/dmt.shtml",
+            "https://www.erowid.org/chemicals/lsd/lsd.shtml",
+            "https://www.erowid.org/plants/salvia/salvia.shtml",
+            "https://www.erowid.org/plants/cannabis/cannabis.shtml",
+        ]
+    }
+    experience = requests.post(url, json=substances).json()
+    experience_url = experience["experience"]["url"]
+
+# -------------------------
+# Fetch full experience details
 # -------------------------
 logger.info("Fetching full experience details")
 url = "https://lysergic.kaizenklass.xyz/api/v1/erowid/experience"
-payload = {"url": experience["experience"]["url"]}
+payload = {"url": experience_url}
 experience_details = requests.post(url, json=payload).json()
 data = experience_details["data"]
 
