@@ -9,6 +9,9 @@ import string
 import os
 import sys
 from urllib.parse import unquote
+import librosa
+
+
 
 
 # -------------------------
@@ -25,6 +28,16 @@ load_dotenv()
 # -------------------------
 # Helpers
 # -------------------------
+def slow_audio(wav, rate=0.9):
+    if not isinstance(wav, np.ndarray):
+        wav = np.asarray(wav, dtype=np.float32)
+
+    # librosa expects mono float32
+    wav = wav.astype(np.float32)
+
+    return librosa.effects.time_stretch(wav, rate=rate)
+
+
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
@@ -108,16 +121,43 @@ logger.info("Substances involved: %s", substances_text)
 # Build narration script
 # -------------------------
 tts_script = f"""
+Welcome.
+
+This is a narrated experience report sourced from Erowid dot org,
+a public archive of psychoactive experience reports shared for
+educational and harm reduction purposes.
+
+This video is not an endorsement, not medical advice,
+and does not encourage illegal activity.
+
+Listener discretion is advised.
+
 {clean_experience['title']}
 
-Experience submitted by {clean_experience['username']}.
-Age: {clean_experience['age']}. Gender: {clean_experience['gender']}.
+This experience was submitted under the username
+{clean_experience['username']}.
 
-Substances involved:
+Reported age: {clean_experience['age']}.
+Reported gender: {clean_experience['gender']}.
+
+The substances involved in this experience include:
 {substances_text}.
 
+What follows is the original experience,
+with minimal edits for clarity.
+
 {clean_experience['content']}
+
+Experiences like this can be deeply personal and unpredictable,
+and are influenced by mindset, environment,
+and many other factors.
+
+If you choose to explore altered states of consciousness,
+education, preparation, and harm reduction are essential.
+
+Thank you for listening.
 """
+
 
 # -------------------------
 # Normalize + chunk
@@ -146,8 +186,9 @@ audio_parts = []
 for i, chunk in enumerate(chunks):
     logger.info("Synthesizing chunk %d/%d", i + 1, len(chunks))
     wav = tts.tts(text=chunk, speaker=speaker)
+    # wav = slow_audio(wav, rate=0.88) 
     audio_parts.append(wav)
-    audio_parts.append(silence(0.35, sample_rate))
+    audio_parts.append(silence(0.5, sample_rate))
 
 final_audio = np.concatenate(audio_parts)
 
