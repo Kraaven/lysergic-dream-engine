@@ -15,12 +15,12 @@ if len(sys.argv) < 2:
     logger.error("Usage: python video.py <tts_audio_file>")
     sys.exit(1)
 
-random_music_index = random.randint(1, 8)
+random_music_index = random.randint(1, 7)
 random_clip_index = random.randint(1, 5)
 
 tts_audio_file = sys.argv[1]  # TTS audio
 music_file = f"music/{random_music_index}.mp3"    # Background music
-clip_file = f"clips/1.mp4"     # Video clip
+clip_file = f"clips/{random_clip_index}.mp4"     # Video clip
 
 output_folder = "output"
 os.makedirs(output_folder, exist_ok=True)
