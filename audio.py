@@ -197,4 +197,6 @@ audio_filename = sanitize_filename(clean_experience["title"]) + ".wav"
 sf.write(audio_filename, final_audio, sr)
 logger.info("Saved audio as %s", audio_filename)
 
-print(audio_filename)
+primary_substance = substances_used[0] if substances_used else "Unknown"
+
+print(f"{audio_filename}|{primary_substance}")

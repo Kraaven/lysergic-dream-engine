@@ -38,7 +38,9 @@ except subprocess.CalledProcessError:
     logger.error("audio.py failed!")
     sys.exit(1)
 
-audio_file = result.stdout.strip().splitlines()[-1]
+output = result.stdout.strip().splitlines()[-1]
+audio_file, primary_substance = output.split("|", 1)
+
 logger.info("Generated audio: %s", audio_file)
 
 # -------------------------
@@ -72,7 +74,7 @@ if not auto_upload:
 
 logger.info("Uploading to YouTube...")
 subprocess.run(
-    ["python", YT_SCRIPT, video_file, PLAYLIST_ID],
+    ["python", YT_SCRIPT, video_file, PLAYLIST_ID, primary_substance],
     check=True
 )
 

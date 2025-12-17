@@ -16,6 +16,7 @@ SCOPES = ["https://www.googleapis.com/auth/youtube"]
 CLIENT_SECRETS = "client_secret.json"
 TOKEN_FILE = "youtube_token.json"
 
+
 def get_youtube():
     creds = None
 
@@ -44,8 +45,10 @@ def upload_video(video_path, title, playlist_id=None):
                 "Narrated psychoactive experience report.\n\n"
                 "Source: Erowid.org\n"
                 "Educational & harm reduction purposes only.\n\n"
-                "Generated using The Lysergic Dream Engine: https://github.com/ik04/lysergic-dream-engine\n"
-                "Checkout more experiences at https://lysergic.vercel.app/"
+                "Generated using The Lysergic Dream Engine:\n"
+                "https://github.com/ik04/lysergic-dream-engine\n\n"
+                "Explore more experiences:\n"
+                "https://lysergic.vercel.app/"
             ),
             "tags": [
                 "trip report",
@@ -54,7 +57,8 @@ def upload_video(video_path, title, playlist_id=None):
                 "lsd",
                 "dmt",
                 "salvia",
-                "cannabis"
+                "cannabis",
+                "mdma"
             ],
             "categoryId": "22",  # People & Blogs
         },
@@ -104,14 +108,19 @@ def upload_video(video_path, title, playlist_id=None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python yt.py <video.mp4> [playlist_id]")
+        print("Usage: python yt.py <video.mp4> [playlist_id] [substance]")
         sys.exit(1)
 
     video_file = sys.argv[1]
     playlist_id = sys.argv[2] if len(sys.argv) > 2 else None
-    
-    base_name = os.path.basename(video_file)
-    title = os.path.splitext(base_name)[0].replace("_", " ")
+    substance = sys.argv[3] if len(sys.argv) > 3 else None
 
+    base_name = os.path.basename(video_file)
+    base_title = os.path.splitext(base_name)[0].replace("_", " ")
+
+    if substance:
+        title = f"{base_title} [{substance} Trip Report]"
+    else:
+        title = base_title
 
     upload_video(video_file, title, playlist_id)
