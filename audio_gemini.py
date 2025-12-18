@@ -207,7 +207,7 @@ This is a narrated experience report from Erowid.org.
 
 {clean_experience['title']}.
 
-A {primary_substance} Trip Report.
+{("an" if primary_substance in ["LSD", "MDMA"] else "a")} {primary_substance} Trip Report.
 
 Submitted by {clean_experience['username']}.
 Age: {clean_experience['age']}.
