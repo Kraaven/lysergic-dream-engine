@@ -3,3 +3,6 @@
 *.mp4
 .env
 *.mp3
+voices.bin
+kokoro-v0_19.onnx
+clea
