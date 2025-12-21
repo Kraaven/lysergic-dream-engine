@@ -1,92 +1,73 @@
-import subprocess
-import logging
 import sys
+import os
+import requests
+import logging
+from urllib.parse import unquote
+# from google import genai
+from dotenv import load_dotenv
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+from validator import validate_environment
+from database import is_processed, mark_as_processed
+from engine_audio import AudioEngine
+from engine_video import create_video
+import yt
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-AUDIO_SCRIPT = "audio.py"
-GEMINI_AUDIO_SCRIPT = "audio_gemini.py"
-VIDEO_SCRIPT = "video.py"
-YT_SCRIPT = "yt.py"
+load_dotenv()
+# client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# -------------------------
-# Parse arguments
-# -------------------------
-experience_url = None
-auto_upload = False
-use_gemini = False
+def fetch_trip_data(url=None):
+    """Fetches a random experience or a specific one from the API."""
+    if not url:
+        logger.info("Fetching random Erowid experience...")
+        api_url = "https://lysergic.kaizenklass.xyz/api/v1/erowid/random/experience?size_per_substance=1"
+        substances = {"urls": ["https://www.erowid.org/chemicals/lsd/lsd.shtml", "https://www.erowid.org/chemicals/dmt/dmt.shtml"]}
+        resp = requests.post(api_url, json=substances).json()
+        url = resp["experience"]["url"]
 
-for arg in sys.argv[1:]:
-    if arg == "-y":
-        auto_upload = True
-    elif arg == "-g":
-        use_gemini = True
-    else:
-        experience_url = arg
+    logger.info(f"Fetching details for: {url}")
+    detail_resp = requests.post("https://lysergic.kaizenklass.xyz/api/v1/erowid/experience", json={"url": url})
+    return detail_resp.json()["data"], url
 
-# -------------------------
-# Choose audio script
-# -------------------------
-audio_script = GEMINI_AUDIO_SCRIPT if use_gemini else AUDIO_SCRIPT
-logger.info("Running %s...", audio_script)
-
-cmd = ["python", audio_script]
-if experience_url:
-    cmd.append(experience_url)
-
-# -------------------------
-# Run audio script
-# -------------------------
-try:
-    result = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
-except subprocess.CalledProcessError:
-    logger.error("%s failed!", audio_script)
-    sys.exit(1)
-
-output = result.stdout.strip().splitlines()[-1]
-audio_file, primary_substance = output.split("|", 1)
-
-logger.info("Generated audio: %s", audio_file)
-logger.info("Primary substance: %s", primary_substance)
-
-# -------------------------
-# Run video.py
-# -------------------------
-logger.info("Running video.py...")
-try:
-    result = subprocess.run(
-        ["python", VIDEO_SCRIPT, audio_file],
-        check=True,
-        text=True,
-        stdout=subprocess.PIPE
+def clean_with_gemini(content):
+    """Uses Gemini to clean punctuation and extract the primary substance."""
+    prompt = (
+        "Clean the following trip report: fix punctuation, remove repetitive meta-text, "
+        "and return a JSON object: { \"cleaned_content\": \"...\", \"primary_substance\": \"...\" }"
     )
-except subprocess.CalledProcessError:
-    logger.error("video.py failed!")
-    sys.exit(1)
+    # response = client.models.generate_content(model="gemini-2.0-flash", contents=f"{prompt}\n\nContent:\n{content}")
+    import json
+    try:
+        data = json.loads(response.text.strip())
+        return data["cleaned_content"], data["primary_substance"]
+    except:
+        return content, "Unknown"
 
-video_file = result.stdout.strip().splitlines()[-1]
-logger.info("Generated video: %s", video_file)
+def main():
+    if not validate_environment(): return
 
-# -------------------------
-# Upload to YouTube
-# -------------------------
-PLAYLIST_ID = "PL6-XViE7MT_Br2si0sy6AHk_omwmj9q4G"
+    # 1. Scraping
+    raw_data, experience_url = fetch_trip_data()
+    if is_processed(experience_url):
+        logger.info("Experience already in database. Skipping.")
+        return
 
-if not auto_upload:
-    answer = input("Upload video to YouTube? [y/n]: ").strip().lower()
-    if answer != "y":
-        logger.info("Upload cancelled.")
-        sys.exit(0)
+    # 2. AI Cleaning
+    cleaned_text, substance = clean_with_gemini(raw_data["content"])
+    title = raw_data.get("title", "Unknown Experience")
 
-logger.info("Uploading to YouTube...")
-subprocess.run(
-    ["python", YT_SCRIPT, video_file, PLAYLIST_ID, primary_substance],
-    check=True
-)
+    # 3. Audio & Video Production
+    ae = AudioEngine()
+    srt_file = ae.generate(cleaned_text, "temp_audio.wav")
+    video_file = f"output/{substance.lower()}_report.mp4"
+    create_video("temp_audio.wav", srt_file, video_file)
 
-logger.info("YouTube upload completed!")
-logger.info("Pipeline completed successfully!")
+    # 4. Upload & Database
+    yt.upload_video(video_file, f"{title} [{substance} Trip Report]")
+    mark_as_processed(experience_url, title, substance)
+    logger.info("Pipeline Complete.")
+
+if __name__ == "__main__":
+    main()
