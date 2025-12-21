@@ -6,3 +6,6 @@
 /models
 /output
 /data
+/__pycache__
+*.srt
+tmp_audio.srt
